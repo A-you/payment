@@ -87,7 +87,7 @@ class AcquirerWeixin(models.Model):
         return ''.join([random.choice(chars) for n in xrange(size)])
 
     @api.multi
-    def weixin_form_generate_values(self, partner_values, tx_values):
+    def weixin_form_generate_values(self, tx_values):
         self.ensure_one()
         base_url = self.env['ir.config_parameter'].get_param('web.base.url')
         amount = int(tx_values.get('amount', 0) * 100)
@@ -147,7 +147,7 @@ class AcquirerWeixin(models.Model):
             return_msg = return_xml.find('return_msg').text
             raise ValidationError("%s, %s" % (return_code, return_msg))
 
-        return partner_values, weixin_tx_values
+        return  weixin_tx_values
 
     @api.multi
     def weixin_get_form_action_url(self):

@@ -98,7 +98,7 @@ class AcquirerAlipay(osv.Model):
         fees = (percentage / 100.0 * amount + fixed) / (1 - percentage / 100.0)
         return fees
 
-    def alipay_form_generate_values(self, cr, uid, id, partner_values, tx_values, context=None):
+    def alipay_form_generate_values(self, cr, uid, id, tx_values, context=None):
         base_url = self.pool['ir.config_parameter'].get_param(cr, SUPERUSER_ID, 'web.base.url')
         acquirer = self.browse(cr, uid, id, context=context)
 
@@ -169,7 +169,7 @@ class AcquirerAlipay(osv.Model):
         alipay_tx_values['sign'] = util.build_mysign(prestr, acquirer.alipay_partner_key, 'MD5')
         alipay_tx_values['sign_type'] = 'MD5'
 
-        return partner_values, alipay_tx_values
+        return alipay_tx_values
 
     def alipay_get_form_action_url(self, cr, uid, id, context=None):
         acquirer = self.browse(cr, uid, id, context=context)

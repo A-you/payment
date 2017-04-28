@@ -153,7 +153,7 @@ class AcquirerallPay(osv.Model):
         fees = (percentage / 100.0 * amount + fixed) / (1 - percentage / 100.0)
         return fees
 
-    def allpay_form_generate_values(self, cr, uid, id, partner_values, tx_values, context=None):
+    def allpay_form_generate_values(self, cr, uid, id, tx_values, context=None):
         base_url = self.pool['ir.config_parameter'].get_param(cr, SUPERUSER_ID, 'web.base.url')
         acquirer = self.browse(cr, uid, id, context=context)
         date_create = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')  # time format yyyy/MM/dd HH:mm:ss
@@ -200,7 +200,7 @@ class AcquirerallPay(osv.Model):
         string_to_sign = util.do_str_replace(urllib.quote(werkzeug.url_encode(sorted_to_sign), '+%').lower())
         allpay_tx_values['CheckMacValue'] = hashlib.md5(string_to_sign).hexdigest().upper()
 
-        return partner_values, allpay_tx_values
+        return allpay_tx_values
 
     def allpay_get_form_action_url(self, cr, uid, id, context=None):
         acquirer = self.browse(cr, uid, id, context=context)

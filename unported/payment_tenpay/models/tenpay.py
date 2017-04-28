@@ -94,7 +94,7 @@ class AcquirerTenpay(osv.Model):
         fees = (percentage / 100.0 * amount + fixed ) / (1 - percentage / 100.0)
         return fees
 
-    def tenpay_form_generate_values(self, cr, uid, id, partner_values, tx_values, context=None):
+    def tenpay_form_generate_values(self, cr, uid, id, tx_values, context=None):
         base_url = self.pool['ir.config_parameter'].get_param(cr, SUPERUSER_ID, 'web.base.url')
         acquirer = self.browse(cr, uid, id, context=context)
         amount = int(tx_values.get('total_fee', 0) * 100)
@@ -133,7 +133,7 @@ class AcquirerTenpay(osv.Model):
         context = context
         context['_data_exchange'] = tenpay_tx_values
 
-        return partner_values, tenpay_tx_values
+        return tenpay_tx_values
 
     def tenpay_get_form_action_url(self, cr, uid, id, context=None):
         acquirer = self.browse(cr, uid, id, context=context)
