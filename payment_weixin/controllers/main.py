@@ -11,9 +11,9 @@ import werkzeug
 
 from lxml import etree
 
-from openerp import http, SUPERUSER_ID
-from openerp.http import request
-from openerp.addons.payment_weixin.models import util
+from odoo import http, SUPERUSER_ID
+from odoo.http import request
+from odoo.addons.payment_weixin.models import util
 
 _logger = logging.getLogger(__name__)
 
@@ -22,20 +22,19 @@ class WeixinController(http.Controller):
     _notify_url = '/payment/weixin/notify/'
 
     def weixin_validate_data(self, **post):
-        cr, uid, context = request.cr, request.uid, request.context
         json = {}
         for el in etree.fromstring(post):
             json[el.tag] = el.text
 
-        _KEY = request.registry['payment.acquirer']._get_weixin_key()
+        _KEY = request.env['payment.acquirer']._get_weixin_key()
         _, prestr = util.params_filter(json)
         mysign = util.build_mysign(prestr, _KEY, 'MD5')
         if mysign != json.get('sign'):
             return 'false'
 
         _logger.info('weixin: validated data')
-        return request.registry['payment.transaction'].form_feedback(cr, SUPERUSER_ID, json, 'weixin',
-                                                                     context=context)
+        return request.env['payment.transaction'].form_feedback( json, 'weixin',
+                                                                     )
 
     @http.route('/payment/weixin/notify', type='http', auth='none', methods=['POST'])
     def weixin_notify(self, **post):

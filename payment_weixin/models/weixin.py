@@ -1,5 +1,4 @@
 # -*- coding: utf-'8' "-*-"
-from  openerp.addons.payment_weixin.controllers.main import WeixinController
 
 try:
     import simplejson as json
@@ -13,9 +12,10 @@ import random
 import string
 
 import util
-from openerp.addons.payment.models.payment_acquirer import ValidationError
-from openerp.http import request
-from openerp import api, fields, models
+from odoo.addons.payment.models.payment_acquirer import ValidationError
+from odoo.addons.payment_weixin.controllers.main import WeixinController
+from odoo.http import request
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -26,35 +26,24 @@ class AcquirerWeixin(models.Model):
     def _get_ipaddress(self):
         return self.ip_address
 
-    @api.model
-    def _get_providers(self):
-        providers = super(AcquirerWeixin, self)._get_providers()
-        providers.append(['weixin', 'weixin'])
-        return providers
+    provider = fields.Selection(selection_add=[('weixin', 'Weixin')])
 
-    weixin_appid = fields.Char(string='Weixin APPID', required_if_provider='weixin')
+    weixin_appid = fields.Char(string=u'微信支付APPID', required_if_provider='weixin')
     weixin_mch_id = fields.Char(string=u'微信支付商户号', required_if_provider='weixin')
-    weixin_key = fields.Char(string=u'API密钥', required_if_provider='weixin')
-    weixin_secret = fields.Char(string='Weixin Appsecret', required_if_provider='weixin')
-    ip_address = fields.Char(string='IP Address', required_if_provider='weixin')
+    weixin_key = fields.Char(string=u'微信支付API密钥', required_if_provider='weixin')
+    weixin_secret = fields.Char(string=u'微信支付Appsecret', required_if_provider='weixin')
+    ip_address = fields.Char(string='Public IP Address', required_if_provider='weixin')
 
     def _get_weixin_urls(self, environment):
         if environment == 'prod':
-            return {
-                'weixin_url': 'https://api.mch.weixin.qq.com/pay/unifiedorder'
-            }
+            return {'weixin_url': 'https://api.mch.weixin.qq.com/pay/unifiedorder'}
         else:
-            return {
-                'weixin_url': 'https://api.mch.weixin.qq.com/pay/unifiedorder'
-            }
+            return {'weixin_url': 'https://api.mch.weixin.qq.com/sandboxnew/pay/unifiedorder'}
 
     @api.one
     def _get_weixin_key(self):
         return self.weixin_key
 
-    _defaults = {
-        'fees_active': False,
-    }
 
     def json2xml(self, json):
         string = ""
@@ -74,7 +63,7 @@ class AcquirerWeixin(models.Model):
                 res = e.read()
                 e.close()
                 if tries and res and json.loads(res)['name'] == 'INTERNAL_SERVICE_ERROR':
-                    _logger.warning('Failed contacting Paypal, retrying (%s remaining)' % tries)
+                    _logger.warning('Failed contacting Weixin, retrying (%s remaining)' % tries)
             tries = tries - 1
         if not res:
             pass
@@ -147,7 +136,7 @@ class AcquirerWeixin(models.Model):
             return_msg = return_xml.find('return_msg').text
             raise ValidationError("%s, %s" % (return_code, return_msg))
 
-        return  weixin_tx_values
+        return weixin_tx_values
 
     @api.multi
     def weixin_get_form_action_url(self):
@@ -161,11 +150,10 @@ class TxWeixin(models.Model):
     weixin_txn_id = fields.Char(string='Transaction ID')
     weixin_txn_type = fields.Char(string='Transaction type')
 
-
     # --------------------------------------------------
     # FORM RELATED METHODS
     # --------------------------------------------------
-
+    @api.model
     def _weixin_form_get_tx_from_data(self, data):
         reference, txn_id = data.get('out_trade_no'), data.get('out_trade_no')
         if not reference or not txn_id:
@@ -185,22 +173,22 @@ class TxWeixin(models.Model):
             raise ValidationError(error_msg)
         return tx_ids[0]
 
-    def _weixin_form_validate(self, tx, data):
+    @api.multi
+    def _weixin_form_validate(self, data):
         status = data.get('trade_state')
         data = {
             'acquirer_reference': data.get('out_trade_no'),
             'weixin_txn_id': data.get('out_trade_no'),
             'weixin_txn_type': data.get('fee_type'),
-
         }
 
         if status == 0:
-            _logger.info('Validated weixin payment for tx %s: set as done' % (tx.reference))
+            _logger.info('Validated weixin payment for tx %s: set as done' % (self.reference))
             data.update(state='done', date_validate=data.get('time_end', fields.datetime.now()))
-            return tx.write(data)
+            return self.write(data)
 
         else:
-            error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (tx.reference, status)
+            error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (self.reference, status)
             _logger.info(error)
             data.update(state='error', state_message=error)
-            return tx.write(data)
+            return self.write(data)

@@ -9,8 +9,8 @@
     'author': 'Odoo CN Community, Jeffery <jeffery9@gmail.com>',
     'depends': ['payment'],
     'data': [
-        'views/weixin.xml',
         'views/payment_acquirer.xml',
+        'views/weixin.xml',
         'data/weixin.xml',
     ],
     'installable': True,
