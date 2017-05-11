@@ -13,13 +13,13 @@ import urllib2
 import util
 from urllib import urlencode, urlopen
 
-from openerp.addons.payment.models.payment_acquirer import ValidationError
-from openerp.addons.payment_tenpay.controllers.main import TenpayController
-from openerp.osv import osv, fields
-from openerp.tools.float_utils import float_compare
-from openerp import SUPERUSER_ID
-from openerp.http import request
-from openerp import api
+from odoo.addons.payment.models.payment_acquirer import ValidationError
+from odoo.addons.payment_tenpay.controllers.main import TenpayController
+from odoo.osv import osv, fields
+from odoo.tools.float_utils import float_compare
+from odoo import SUPERUSER_ID
+from odoo.http import request
+from odoo import api
 import sys
 reload(sys)
 sys.setdefaultencoding('utf8')

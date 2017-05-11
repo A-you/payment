@@ -16,11 +16,11 @@ import util
 import urllib
 import datetime
 
-from openerp.addons.payment.models.payment_acquirer import ValidationError
-from openerp.addons.payment_allpay.controllers.main import allPayController
-from openerp.osv import osv, fields
-from openerp.tools.float_utils import float_compare
-from openerp import SUPERUSER_ID, api
+from odoo.addons.payment.models.payment_acquirer import ValidationError
+from odoo.addons.payment_allpay.controllers.main import allPayController
+from odoo.osv import osv, fields
+from odoo.tools.float_utils import float_compare
+from odoo import SUPERUSER_ID, api
 
 _logger = logging.getLogger(__name__)
 

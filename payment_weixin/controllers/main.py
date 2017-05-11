@@ -11,9 +11,10 @@ import werkzeug
 
 from lxml import etree
 
-from odoo import http, SUPERUSER_ID
-from odoo.http import request
+from odoo import SUPERUSER_ID
+from odoo import http
 from odoo.addons.payment_weixin.models import util
+from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 

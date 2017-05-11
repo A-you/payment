@@ -5,17 +5,21 @@ try:
 except ImportError:
     import json
 import logging
-import urlparse
-import urllib2
-from lxml import etree
 import random
 import string
+import urllib2
+import urlparse
+
+from lxml import etree
 
 import util
+
+from odoo import api
+from odoo import fields
+from odoo import models
 from odoo.addons.payment.models.payment_acquirer import ValidationError
 from odoo.addons.payment_weixin.controllers.main import WeixinController
 from odoo.http import request
-from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 

@@ -9,9 +9,9 @@ import pprint
 import urllib2
 import werkzeug
 
-from openerp import http, SUPERUSER_ID
-from openerp.http import request
-from openerp.addons.payment_tenpay.models import util
+from odoo import http, SUPERUSER_ID
+from odoo.http import request
+from odoo.addons.payment_tenpay.models import util
 
 _logger = logging.getLogger(__name__)
 
