@@ -61,7 +61,7 @@ def params_filter(params):
     prestr = prestr[:-1]
     return newparams, prestr
 
-def build_mysign(prestr, key, sign_type = 'MD5'):
+def build_mysign(prestr, key, sign_type='MD5'):
     if sign_type == 'MD5':
-        return md5(prestr + key).hexdigest().upper()
+        return md5(prestr + '&key=' + key).hexdigest().upper()
     return ''
