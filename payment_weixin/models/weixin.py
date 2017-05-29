@@ -14,9 +14,7 @@ from lxml import etree
 
 import util
 
-from odoo import api
-from odoo import fields
-from odoo import models
+from odoo import api, fields, models
 from odoo.addons.payment.models.payment_acquirer import ValidationError
 from odoo.addons.payment_weixin.controllers.main import WeixinController
 from odoo.http import request
@@ -40,6 +38,9 @@ class AcquirerWeixin(models.Model):
     )
     weixin_key = fields.Char(
         string=u'微信支付API密钥', required_if_provider='weixin'
+    )
+    weixin_signkey = fields.Char(
+        string=u'微信支付验签密钥' 
     )
     weixin_secret = fields.Char(
         string=u'微信支付Appsecret', required_if_provider='weixin'
@@ -103,21 +104,25 @@ class AcquirerWeixin(models.Model):
 
     @api.multi
     def weixin_form_generate_values(self, tx_values):
-        _logger.info("---- tx_values is %s" % (tx_values))
+        _logger.debug("----tx_values is %s" % (tx_values))
         weixin_tx_values = dict(tx_values)
         amount = int(tx_values.get('amount', 0) * 100)
         nonce_str = self.random_generator()
         base_url = self.env['ir.config_parameter'].get_param('web.base.url')
+        url = self._get_weixin_urls(self.environment)['weixin_url']
 
         order_name = tx_values['reference']
         order = self.env['sale.order'].search([('name', '=', order_name)])
         order_lines = self.env['sale.order.line'].search_read(
-            [('order_id', '=', order.id)], ['name', 'product_uom_qty']
+            [('order_id', '=', order.id)], ['product_id', 'product_uom_qty']
         )
 
         string = u''
         for line in order_lines:
-            string += u'品名：%s   数量：%s   ///_______  \n' % (line['name'], line['product_uom_qty'])
+            product_name = line['product_id'][1]
+            string += u'品名：%s   数量：%s   /  \n' % (
+                product_name, line['product_uom_qty']
+            )
 
         weixin_tx_values.update(
             {
@@ -130,6 +135,8 @@ class AcquirerWeixin(models.Model):
                 'nonce_str':
                     nonce_str,
                 'body':
+                    order_name,
+                'detail':
                     string,
                 'out_trade_no':
                     order_name,
@@ -143,14 +150,54 @@ class AcquirerWeixin(models.Model):
                     '%s' %
                     urlparse.urljoin(base_url, WeixinController._notify_url),
                 'trade_type':
-                    'NATIVE'
+                    'NATIVE',
+                'weixin_url':
+                    url,
             }
         )
         return weixin_tx_values
 
-    @api.multi
+    @api.model
     def weixin_get_form_action_url(self):
         return '/payment/weixin/code_url'
+
+    @api.model
+    def _get_weixin_signkey(self, acquirer):
+        if acquirer.weixin_signkey:
+            return 
+
+        url = 'https://api.mch.weixin.qq.com/sandboxnew/pay/getsignkey'
+        nonce_str = self.random_generator()
+        data = {}
+        data.update({'mch_id': acquirer.weixin_mch_id, 'nonce_str': nonce_str})
+
+        _, prestr = util.params_filter(data)
+        key = acquirer.weixin_key
+        _logger.debug("+++ prestr %s, Weixin Key %s" % (prestr, key))
+        data['sign'] = util.build_mysign(prestr, key, 'MD5')
+
+        data_xml = "<xml>" + self.json2xml(data) + "</xml>"
+
+        request = urllib2.Request(url, data_xml)
+        result = self._try_url(request, tries=3)
+
+        _logger.debug(
+            "_______get_weixin_signkey_____ request to %s and the request data is %s, and request result is %s"
+            % (url, data_xml, result)
+        )
+        return_xml = etree.fromstring(result)
+
+        if return_xml.find('return_code'
+                           ).text == "SUCCESS" and return_xml.find(
+                               'sandbox_signkey'
+                           ).text != False:
+            sandbox_signkey = return_xml.find('sandbox_signkey').text
+        else:
+            return_code = return_xml.find('return_code').text
+            return_msg = return_xml.find('return_msg').text
+            raise ValidationError("%s, %s" % (return_code, return_msg))
+
+        return sandbox_signkey
 
     @api.multi
     def _gen_weixin_code_url(self, post_data):
@@ -169,20 +216,29 @@ class AcquirerWeixin(models.Model):
             }
         )
 
+        acquirer = self.search([('weixin_appid', '=', post_data['appid'])])
+        _logger.debug("--- acquirer %s" % (acquirer))
+
+        if acquirer.environment == 'prod':
+            key = acquirer.weixin_key
+        else:
+            key = self._get_weixin_signkey(acquirer)
+
         _, prestr = util.params_filter(data)
-        key = post_data['key']
-        _logger.info("prestr %s, Weixin Key %s" % (prestr, key))
+
+        _logger.debug("+++ prestr %s, Weixin Key %s" % (prestr, key))
+
         data['sign'] = util.build_mysign(prestr, key, 'MD5')
 
         data_xml = "<xml>" + self.json2xml(data) + "</xml>"
 
-        url = self._get_weixin_urls(self.environment)['weixin_url']
+        url = acquirer._get_weixin_urls(acquirer.environment)['weixin_url']
 
         request = urllib2.Request(url, data_xml)
         result = self._try_url(request, tries=3)
 
-        _logger.info(
-            "request to %s and the request data is %s, and request result is %s"
+        _logger.debug(
+            "________gen_weixin_code_url_____ request to %s and the request data is %s, and request result is %s"
             % (url, data_xml, result)
         )
         return_xml = etree.fromstring(result)
@@ -240,7 +296,7 @@ class TxWeixin(models.Model):
         }
 
         if status == 0:
-            _logger.info(
+            _logger.debug(
                 'Validated weixin payment for tx %s: set as done' %
                 (self.reference)
             )
@@ -254,6 +310,6 @@ class TxWeixin(models.Model):
             error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (
                 self.reference, status
             )
-            _logger.info(error)
+            _logger.debug(error)
             data.update(state='error', state_message=error)
             return self.write(data)

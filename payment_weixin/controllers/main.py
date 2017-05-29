@@ -35,7 +35,7 @@ class WeixinController(http.Controller):
         if mysign != json.get('sign'):
             return 'false'
 
-        _logger.info('weixin: validated data')
+        _logger.debug('weixin: validated data')
         return request.env['payment.transaction'].form_feedback(
             json,
             'weixin',
@@ -46,7 +46,7 @@ class WeixinController(http.Controller):
     )
     def weixin_notify(self, **post):
         """ weixin Notify. """
-        _logger.info(
+        _logger.debug(
             'Beginning weixin notify form_feedback with post data %s',
             pprint.pformat(post)
         )  # debug
@@ -58,12 +58,12 @@ class WeixinController(http.Controller):
     @http.route(['/payment/weixin/code_url', ], type='http', auth='public', website=True, csrf=False
     )
     def weixin_qrcode(self, **post):
-        _logger.info(
+        _logger.debug(
             'Beginning weixin_qrcode with post data %s', pprint.pformat(post)
         )  # debug
 
         code_url = request.env['payment.acquirer']._gen_weixin_code_url(post)
-        _logger.info('Weixin code_url %s', code_url)
+        _logger.debug('Weixin code_url %s', code_url)
 
         post.update({'qrcode': code_url})
         # post.update({'qrcode': 'weixin：//wxpay/s/An4baqw'})

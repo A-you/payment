@@ -8,11 +8,13 @@
                 <input type="hidden" name="key" t-att-value="key" />
                 <input type="hidden" name="nonce_str" t-att-value="nonce_str" />
                 <input type="hidden" name="body" t-att-value="body" />
+                <input type="hidden" name="detail" t-att-value="detail" />
                 <input type="hidden" name="out_trade_no" t-att-value="out_trade_no" />
                 <input type="hidden" name="total_fee" t-att-value="total_fee" />
                 <input type="hidden" name="amount" t-att-value="amount" />
                 <input type="hidden" name="spbill_create_ip" t-att-value="spbill_create_ip" />
                 <input type="hidden" name="notify_url" t-att-value="notify_url" />
+                <input type="hidden" name="weixin_url" t-att-value="weixin_url" />
                 <input type="hidden" name="trade_type" t-att-value="trade_type" />
                 <button type="submit" width="100px" t-att-class="submit_class">
                     <img t-if="not submit_txt" src="/payment_weixin/static/src/img/weixin_icon.png" />

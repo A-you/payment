@@ -19,7 +19,7 @@
                                             <t t-esc="amount" /> </p>
 
                                         <div>订单内容：
-                                            <t t-esc="body" />
+                                            <t t-esc="detail" />
                                         </div>
                                     </div>
                                 </div>
