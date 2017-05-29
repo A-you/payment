@@ -7,9 +7,10 @@
     'version': '1.0',
     'description': """Weixin Payment Acquirer""",
     'author': 'Odoo CN Community, Jeffery <jeffery9@gmail.com>',
-    'depends': ['payment'],
+    'depends': ['payment', 'website_sale'],
     'data': [
         'views/payment_acquirer.xml',
+        'views/templates.xml',
         'views/weixin.xml',
         'data/weixin.xml',
     ],

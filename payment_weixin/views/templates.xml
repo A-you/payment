@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="0">
+        <template id="code_url" name="扫码付款" page="True">
+            <t t-call="website.layout">
+                <div id="wrap">
+                    <div class="oe_structure" />
+                    <div class="container">
+                        <h1>扫码付款</h1>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="oe_structure">
+                                    <div class="text-center mt64">
+                                        <p>订单信息如下：</p>
+                                        <p>订单号：
+                                            <t t-esc="out_trade_no" />
+                                        </p>
+                                        <p>金额：
+                                            <t t-esc="amount" /> </p>
+
+                                        <div>订单内容：
+                                            <t t-esc="body" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mt64">
+                                    <t t-set="code_url" t-value="qrcode" />
+                                    <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('QR', code_url, 200, 200)" style="width:200px;height:200px" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="oe_structure" />
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>

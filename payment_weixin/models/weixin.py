@@ -32,22 +32,37 @@ class AcquirerWeixin(models.Model):
 
     provider = fields.Selection(selection_add=[('weixin', 'Weixin')])
 
-    weixin_appid = fields.Char(string=u'微信支付APPID', required_if_provider='weixin')
-    weixin_mch_id = fields.Char(string=u'微信支付商户号', required_if_provider='weixin')
-    weixin_key = fields.Char(string=u'微信支付API密钥', required_if_provider='weixin')
-    weixin_secret = fields.Char(string=u'微信支付Appsecret', required_if_provider='weixin')
-    ip_address = fields.Char(string='Public IP Address', required_if_provider='weixin')
+    weixin_appid = fields.Char(
+        string=u'微信支付APPID', required_if_provider='weixin'
+    )
+    weixin_mch_id = fields.Char(
+        string=u'微信支付商户号', required_if_provider='weixin'
+    )
+    weixin_key = fields.Char(
+        string=u'微信支付API密钥', required_if_provider='weixin'
+    )
+    weixin_secret = fields.Char(
+        string=u'微信支付Appsecret', required_if_provider='weixin'
+    )
+    ip_address = fields.Char(
+        string='Public IP Address', required_if_provider='weixin'
+    )
 
     def _get_weixin_urls(self, environment):
         if environment == 'prod':
-            return {'weixin_url': 'https://api.mch.weixin.qq.com/pay/unifiedorder'}
+            return {
+                'weixin_url':
+                    'https://api.mch.weixin.qq.com/pay/unifiedorder'
+            }
         else:
-            return {'weixin_url': 'https://api.mch.weixin.qq.com/sandboxnew/pay/unifiedorder'}
+            return {
+                'weixin_url':
+                    'https://api.mch.weixin.qq.com/sandboxnew/pay/unifiedorder'
+            }
 
     @api.one
     def _get_weixin_key(self):
         return self.weixin_key
-
 
     def json2xml(self, json):
         string = ""
@@ -56,7 +71,7 @@ class AcquirerWeixin(models.Model):
 
         return string
 
-    def _try_url(self, request, tries=3, context=None):
+    def _try_url(self, request, tries=3):
 
         done, res = False, None
         while (not done and tries):
@@ -66,8 +81,13 @@ class AcquirerWeixin(models.Model):
             except urllib2.HTTPError as e:
                 res = e.read()
                 e.close()
-                if tries and res and json.loads(res)['name'] == 'INTERNAL_SERVICE_ERROR':
-                    _logger.warning('Failed contacting Weixin, retrying (%s remaining)' % tries)
+                if tries and res and json.loads(res)[
+                    'name'
+                ] == 'INTERNAL_SERVICE_ERROR':
+                    _logger.warning(
+                        'Failed contacting Weixin, retrying (%s remaining)' %
+                        tries
+                    )
             tries = tries - 1
         if not res:
             pass
@@ -76,76 +96,107 @@ class AcquirerWeixin(models.Model):
         res.close()
         return result
 
-    def random_generator(self, size=6, chars=string.ascii_uppercase + string.digits):
+    def random_generator(
+        self, size=6, chars=string.ascii_uppercase + string.digits
+    ):
         return ''.join([random.choice(chars) for n in xrange(size)])
 
     @api.multi
     def weixin_form_generate_values(self, tx_values):
-        self.ensure_one()
-        base_url = self.env['ir.config_parameter'].get_param('web.base.url')
+        _logger.info("---- tx_values is %s" % (tx_values))
+        weixin_tx_values = dict(tx_values)
         amount = int(tx_values.get('amount', 0) * 100)
         nonce_str = self.random_generator()
+        base_url = self.env['ir.config_parameter'].get_param('web.base.url')
 
-        weixin_tx_values = dict(tx_values)
+        order_name = tx_values['reference']
+        order = self.env['sale.order'].search([('name', '=', order_name)])
+        order_lines = self.env['sale.order.line'].search_read(
+            [('order_id', '=', order.id)], ['name', 'product_uom_qty']
+        )
+
+        string = u''
+        for line in order_lines:
+            string += u'品名：%s   数量：%s   ///_______  \n' % (line['name'], line['product_uom_qty'])
+
         weixin_tx_values.update(
             {
-                'appid': self.weixin_appid,
-                'mch_id': self.weixin_mch_id,
-                'nonce_str': nonce_str,
-                'body': tx_values['reference'],
-                'out_trade_no': tx_values['reference'],
-                'total_fee': amount,
-                'spbill_create_ip': self._get_ipaddress(),
-                'notify_url': '%s' % urlparse.urljoin(base_url, WeixinController._notify_url),
-                'trade_type': 'NATIVE',
-                'product_id': tx_values['reference'],
+                'appid':
+                    self.weixin_appid,
+                'mch_id':
+                    self.weixin_mch_id,
+                'key':
+                    self.weixin_key,
+                'nonce_str':
+                    nonce_str,
+                'body':
+                    string,
+                'out_trade_no':
+                    order_name,
+                'total_fee':
+                    amount,
+                'amount':
+                    tx_values['amount'],
+                'spbill_create_ip':
+                    self._get_ipaddress(),
+                'notify_url':
+                    '%s' %
+                    urlparse.urljoin(base_url, WeixinController._notify_url),
+                'trade_type':
+                    'NATIVE'
             }
         )
+        return weixin_tx_values
 
-        data_post = {}
-        data_post.update(
+    @api.multi
+    def weixin_get_form_action_url(self):
+        return '/payment/weixin/code_url'
+
+    @api.multi
+    def _gen_weixin_code_url(self, post_data):
+        data = {}
+        data.update(
             {
-                'appid': self.weixin_appid,
-                'mch_id': self.weixin_mch_id,
-                'nonce_str': nonce_str,
-                'body': tx_values['reference'],
-                'out_trade_no': tx_values['reference'],
-                'total_fee': amount,
-                'spbill_create_ip': self._get_ipaddress(),
-                'notify_url': '%s' % urlparse.urljoin(base_url, WeixinController._notify_url),
-                'trade_type': 'NATIVE',
-                'product_id': tx_values['reference'],
+                'appid': post_data['appid'],
+                'mch_id': post_data['mch_id'],
+                'nonce_str': post_data['nonce_str'],
+                'body': post_data['body'],
+                'out_trade_no': post_data['out_trade_no'],
+                'total_fee': post_data['total_fee'],
+                'spbill_create_ip': post_data['spbill_create_ip'],
+                'notify_url': post_data['notify_url'],
+                'trade_type': post_data['trade_type'],
             }
         )
 
-        _, prestr = util.params_filter(data_post)
-        weixin_tx_values['sign'] = util.build_mysign(prestr, self.weixin_key, 'MD5')
-        data_post['sign'] = weixin_tx_values['sign']
+        _, prestr = util.params_filter(data)
+        key = post_data['key']
+        _logger.info("prestr %s, Weixin Key %s" % (prestr, key))
+        data['sign'] = util.build_mysign(prestr, key, 'MD5')
 
-        data_xml = "<xml>" + self.json2xml(data_post) + "</xml>"
+        data_xml = "<xml>" + self.json2xml(data) + "</xml>"
 
         url = self._get_weixin_urls(self.environment)['weixin_url']
 
         request = urllib2.Request(url, data_xml)
         result = self._try_url(request, tries=3)
 
-        _logger.info("request to %s and the request data is %s, and request result is %s" % (url, data_xml, result))
+        _logger.info(
+            "request to %s and the request data is %s, and request result is %s"
+            % (url, data_xml, result)
+        )
         return_xml = etree.fromstring(result)
 
-        if return_xml.find('return_code').text == "SUCCESS" and return_xml.find('code_url').text != False:
-            qrcode = return_xml.find('code_url').text
-            weixin_tx_values['qrcode'] = qrcode
+        if return_xml.find(
+            'return_code'
+        ).text == "SUCCESS" and return_xml.find('code_url').text != False:
+            code_url = return_xml.find('code_url').text
         else:
             return_code = return_xml.find('return_code').text
             return_msg = return_xml.find('return_msg').text
             raise ValidationError("%s, %s" % (return_code, return_msg))
 
-        return weixin_tx_values
-
-    @api.multi
-    def weixin_get_form_action_url(self):
-        self.ensure_one()
-        return self._get_weixin_urls(self.environment)['weixin_url']
+        return code_url
 
 
 class TxWeixin(models.Model):
@@ -161,7 +212,9 @@ class TxWeixin(models.Model):
     def _weixin_form_get_tx_from_data(self, data):
         reference, txn_id = data.get('out_trade_no'), data.get('out_trade_no')
         if not reference or not txn_id:
-            error_msg = 'weixin: received data with missing reference (%s) or txn_id (%s)' % (reference, txn_id)
+            error_msg = 'weixin: received data with missing reference (%s) or txn_id (%s)' % (
+                reference, txn_id
+            )
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
@@ -187,12 +240,20 @@ class TxWeixin(models.Model):
         }
 
         if status == 0:
-            _logger.info('Validated weixin payment for tx %s: set as done' % (self.reference))
-            data.update(state='done', date_validate=data.get('time_end', fields.datetime.now()))
+            _logger.info(
+                'Validated weixin payment for tx %s: set as done' %
+                (self.reference)
+            )
+            data.update(
+                state='done',
+                date_validate=data.get('time_end', fields.datetime.now())
+            )
             return self.write(data)
 
         else:
-            error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (self.reference, status)
+            error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (
+                self.reference, status
+            )
             _logger.info(error)
             data.update(state='error', state_message=error)
             return self.write(data)
