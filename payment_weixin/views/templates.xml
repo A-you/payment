@@ -17,7 +17,6 @@
                                         </p>
                                         <p>金额：
                                             <t t-esc="amount" /> </p>
-
                                         <div>订单内容：
                                             <t t-esc="detail" />
                                         </div>
@@ -34,5 +33,14 @@
                 </div>
             </t>
         </template>
+        <!-- <template id="confirmation" inherit_id="website_sale.confirmation">
+            <xpath expr="//div[@class='oe_website_sale_tx_status']" position="before">
+                <div class="text-center mt64">
+                    <t t-set="order.payment_tx_id.weixin_code_url" t-value="qrcode" />
+                    <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('QR', code_url, 200, 200)" style="width:200px;height:200px" />
+                </div>
+            </xpath>
+        </template> -->
     </data>
 </odoo>
+

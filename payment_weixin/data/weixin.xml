@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <openerp>
-    <data noupdate="0">
+    <data noupdate="1">
         <record id="payment_acquirer_weixin" model="payment.acquirer">
             <field name="name">weixin</field>
             <field name="image" type="base64" file="payment_weixin/static/src/img/weixin_icon.png" />

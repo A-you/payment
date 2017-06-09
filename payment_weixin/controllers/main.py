@@ -36,7 +36,7 @@ class WeixinController(http.Controller):
             return 'false'
 
         _logger.debug('weixin: validated data')
-        return request.env['payment.transaction'].form_feedback(
+        return request.env['payment.transaction'].sudo().form_feedback(
             json,
             'weixin',
         )
@@ -55,7 +55,14 @@ class WeixinController(http.Controller):
         else:
             return ''
 
-    @http.route(['/payment/weixin/code_url', ], type='http', auth='public', website=True, csrf=False
+    @http.route(
+        [
+            '/payment/weixin/code_url',
+        ],
+        type='http',
+        auth='public',
+        website=True,
+        csrf=False
     )
     def weixin_qrcode(self, **post):
         _logger.debug(

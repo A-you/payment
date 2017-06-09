@@ -260,6 +260,7 @@ class TxWeixin(models.Model):
 
     weixin_txn_id = fields.Char(string='Transaction ID')
     weixin_txn_type = fields.Char(string='Transaction type')
+    # weixin_code_url = fields.Char(string='Weixin Pay Code URL')
 
     # --------------------------------------------------
     # FORM RELATED METHODS
