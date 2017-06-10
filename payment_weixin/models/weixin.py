@@ -11,13 +11,17 @@ import urllib2
 import urlparse
 
 from lxml import etree
+from odoo import api
+from odoo import fields
+from odoo import models
+
+# from odoo.addons.payment.models.payment_acquirer import ValidationError
+from odoo.addons.payment_weixin.controllers.main import WeixinController
+from odoo.exceptions import UserError
+from odoo.exceptions import ValidationError
+from odoo.http import request
 
 import util
-
-from odoo import api, fields, models
-from odoo.addons.payment.models.payment_acquirer import ValidationError
-from odoo.addons.payment_weixin.controllers.main import WeixinController
-from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 
@@ -39,9 +43,7 @@ class AcquirerWeixin(models.Model):
     weixin_key = fields.Char(
         string=u'微信支付API密钥', required_if_provider='weixin'
     )
-    weixin_signkey = fields.Char(
-        string=u'微信支付验签密钥' 
-    )
+    weixin_signkey = fields.Char(string=u'微信支付验签密钥')
     weixin_secret = fields.Char(
         string=u'微信支付Appsecret', required_if_provider='weixin'
     )
@@ -52,8 +54,7 @@ class AcquirerWeixin(models.Model):
     def _get_weixin_urls(self, environment):
         if environment == 'prod':
             return {
-                'weixin_url':
-                    'https://api.mch.weixin.qq.com/pay/unifiedorder'
+                'weixin_url': 'https://api.mch.weixin.qq.com/pay/unifiedorder'
             }
         else:
             return {
@@ -104,7 +105,7 @@ class AcquirerWeixin(models.Model):
 
     @api.multi
     def weixin_form_generate_values(self, tx_values):
-        _logger.debug("----tx_values is %s" % (tx_values))
+        _logger.info("----tx_values is %s" % (tx_values))
         weixin_tx_values = dict(tx_values)
         amount = int(tx_values.get('amount', 0) * 100)
         nonce_str = self.random_generator()
@@ -164,7 +165,7 @@ class AcquirerWeixin(models.Model):
     @api.model
     def _get_weixin_signkey(self, acquirer):
         if acquirer.weixin_signkey:
-            return 
+            return
 
         url = 'https://api.mch.weixin.qq.com/sandboxnew/pay/getsignkey'
         nonce_str = self.random_generator()
@@ -173,7 +174,7 @@ class AcquirerWeixin(models.Model):
 
         _, prestr = util.params_filter(data)
         key = acquirer.weixin_key
-        _logger.debug("+++ prestr %s, Weixin Key %s" % (prestr, key))
+        _logger.info("+++ prestr %s, Weixin Key %s" % (prestr, key))
         data['sign'] = util.build_mysign(prestr, key, 'MD5')
 
         data_xml = "<xml>" + self.json2xml(data) + "</xml>"
@@ -181,21 +182,20 @@ class AcquirerWeixin(models.Model):
         request = urllib2.Request(url, data_xml)
         result = self._try_url(request, tries=3)
 
-        _logger.debug(
+        _logger.info(
             "_______get_weixin_signkey_____ request to %s and the request data is %s, and request result is %s"
             % (url, data_xml, result)
         )
         return_xml = etree.fromstring(result)
 
-        if return_xml.find('return_code'
-                           ).text == "SUCCESS" and return_xml.find(
-                               'sandbox_signkey'
-                           ).text != False:
+        if return_xml.find('return_code').text == "SUCCESS" and return_xml.find(
+            'sandbox_signkey'
+        ).text != False:
             sandbox_signkey = return_xml.find('sandbox_signkey').text
         else:
             return_code = return_xml.find('return_code').text
             return_msg = return_xml.find('return_msg').text
-            raise ValidationError("%s, %s" % (return_code, return_msg))
+            raise UserError("%s, %s" % (return_code, return_msg))
 
         return sandbox_signkey
 
@@ -217,7 +217,7 @@ class AcquirerWeixin(models.Model):
         )
 
         acquirer = self.search([('weixin_appid', '=', post_data['appid'])])
-        _logger.debug("--- acquirer %s" % (acquirer))
+        _logger.info("--- acquirer %s" % (acquirer))
 
         if acquirer.environment == 'prod':
             key = acquirer.weixin_key
@@ -226,7 +226,7 @@ class AcquirerWeixin(models.Model):
 
         _, prestr = util.params_filter(data)
 
-        _logger.debug("+++ prestr %s, Weixin Key %s" % (prestr, key))
+        _logger.info("+++ prestr %s, Weixin Key %s" % (prestr, key))
 
         data['sign'] = util.build_mysign(prestr, key, 'MD5')
 
@@ -237,22 +237,32 @@ class AcquirerWeixin(models.Model):
         request = urllib2.Request(url, data_xml)
         result = self._try_url(request, tries=3)
 
-        _logger.debug(
+        _logger.info(
             "________gen_weixin_code_url_____ request to %s and the request data is %s, and request result is %s"
             % (url, data_xml, result)
         )
         return_xml = etree.fromstring(result)
 
-        if return_xml.find(
-            'return_code'
-        ).text == "SUCCESS" and return_xml.find('code_url').text != False:
-            code_url = return_xml.find('code_url').text
-        else:
-            return_code = return_xml.find('return_code').text
-            return_msg = return_xml.find('return_msg').text
-            raise ValidationError("%s, %s" % (return_code, return_msg))
+        data_json = {}
 
-        return code_url
+        for el in return_xml:
+            data_json[el.tag] = el.text
+
+        if data_json['return_code'] == "SUCCESS" and data_json.get(
+            'code_url', False
+        ):
+            return data_json['code_url']
+
+        else:
+            return_code = data_json.get('return_code')
+            return_msg = data_json.get('return_msg')
+
+            msg = "[%s] %s " % (return_code, return_msg)
+
+            _logger.info(msg)
+            raise UserError(msg)
+
+        return False
 
 
 class TxWeixin(models.Model):
@@ -260,7 +270,7 @@ class TxWeixin(models.Model):
 
     weixin_txn_id = fields.Char(string='Transaction ID')
     weixin_txn_type = fields.Char(string='Transaction type')
-    # weixin_code_url = fields.Char(string='Weixin Pay Code URL')
+    weixin_txn_code_url = fields.Char(string='Weixin Pay Code URL')
 
     # --------------------------------------------------
     # FORM RELATED METHODS
@@ -273,7 +283,7 @@ class TxWeixin(models.Model):
                 reference, txn_id
             )
             _logger.error(error_msg)
-            raise ValidationError(error_msg)
+            raise UserError(error_msg)
 
         # find tx -> @TDENOTE use txn_id ?
         tx_ids = self.search([('reference', '=', reference)])
@@ -284,7 +294,7 @@ class TxWeixin(models.Model):
             else:
                 error_msg += '; multiple order found'
             _logger.error(error_msg)
-            raise ValidationError(error_msg)
+            raise UserError(error_msg)
         return tx_ids[0]
 
     @api.multi
@@ -297,7 +307,7 @@ class TxWeixin(models.Model):
         }
 
         if status == 0:
-            _logger.debug(
+            _logger.info(
                 'Validated weixin payment for tx %s: set as done' %
                 (self.reference)
             )
@@ -311,6 +321,6 @@ class TxWeixin(models.Model):
             error = 'Received unrecognized status for weixin payment %s: %s, set as error' % (
                 self.reference, status
             )
-            _logger.debug(error)
+            _logger.info(error)
             data.update(state='error', state_message=error)
             return self.write(data)
