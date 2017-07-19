@@ -105,7 +105,6 @@ class AcquirerWeixin(models.Model):
 
     @api.multi
     def weixin_form_generate_values(self, tx_values):
-        _logger.info("----tx_values is %s" % (tx_values))
         weixin_tx_values = dict(tx_values)
         amount = int(tx_values.get('amount', 0) * 100)
         nonce_str = self.random_generator()
@@ -156,6 +155,7 @@ class AcquirerWeixin(models.Model):
                     url,
             }
         )
+        _logger.info("----weixin tx_values is %s" % (weixin_tx_values))
         return weixin_tx_values
 
     @api.model
