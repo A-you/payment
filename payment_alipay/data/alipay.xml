@@ -15,7 +15,7 @@
             <field name="alipay_partner_account">dummy</field>
             <field name="alipay_partner_key">dummy</field>
             <field name="alipay_seller_email">dummy</field>
-            <field name="alipay_interface_type">trade_create_by_buyer</field>
+            <field name="alipay_interface_type">create_direct_pay_by_user</field>
         </record>
     </data>
 </openerp>

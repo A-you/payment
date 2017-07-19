@@ -44,7 +44,7 @@ class AcquirerAlipay(models.Model):
         return self.alipay_partner_key
 
     ALIPAY_INTERFACE_TYPE = [
-        ('trade_create_by_buyer', 'Standard Dual Interface'),
+        # ('trade_create_by_buyer', 'Standard Dual Interface'),
         ('create_direct_pay_by_user', 'Instant Payment Transaction'),
         ('create_partner_trade_by_buyer', 'Securied Transaction'),
     ]
@@ -52,7 +52,7 @@ class AcquirerAlipay(models.Model):
     provider = fields.Selection(selection_add=[('alipay', 'Alipay')])
     alipay_partner_account = fields.Char('Alipay Partner ID', required_if_provider='alipay')
     alipay_partner_key = fields.Char('Alipay Partner Key', required_if_provider='alipay')
-    alipay_seller_email = fields.Char('Alipay Seller Email', required_if_provider='alipay')
+    alipay_seller_email = fields.Char(u'支付宝登录账号', required_if_provider='alipay')
     alipay_interface_type = fields.Selection(ALIPAY_INTERFACE_TYPE, 'Interface Type', required_if_provider='alipay')
 
     
@@ -89,10 +89,10 @@ class AcquirerAlipay(models.Model):
                 'partner': self.alipay_partner_account,
                 'seller_email': self.alipay_seller_email,
                 'seller_id': self.alipay_partner_account,
-                '_input_charset': 'utf-8',
+                '_input_charset': 'UTF-8',
                 'out_trade_no': tx_values['reference'],
                 'subject': tx_values['reference'],
-                'body': '%s: %s' % (self.company_id.name, tx_values['reference']),
+                'body': u'%s: %s' % (self.company_id.name, tx_values['reference']),
                 'payment_type': '1',
                 'return_url': '%s' % urlparse.urljoin(base_url, AlipayController._return_url),
                 'notify_url': '%s' % urlparse.urljoin(base_url, AlipayController._notify_url),
@@ -105,10 +105,10 @@ class AcquirerAlipay(models.Model):
                 'partner': self.alipay_partner_account,
                 'seller_email': self.alipay_seller_email,
                 'seller_id': self.alipay_partner_account,
-                '_input_charset': 'utf-8',
+                '_input_charset': 'UTF-8',
                 'out_trade_no': tx_values['reference'],
                 'subject': tx_values['reference'],
-                'body': '%s: %s' % (self.company_id.name, tx_values['reference']),
+                'body': u'%s: %s' % (self.company_id.name, tx_values['reference']),
                 'payment_type': '1',
                 'return_url': '%s' % urlparse.urljoin(base_url, AlipayController._return_url),
                 'notify_url': '%s' % urlparse.urljoin(base_url, AlipayController._notify_url),
@@ -153,6 +153,8 @@ class AcquirerAlipay(models.Model):
         _, prestr = util.params_filter(to_sign)
         alipay_tx_values['sign'] = util.build_mysign(prestr, self.alipay_partner_key, 'MD5')
         alipay_tx_values['sign_type'] = 'MD5'
+
+        _logger.info( '----alipay tx_values is %s'%alipay_tx_values)
 
         return alipay_tx_values
 

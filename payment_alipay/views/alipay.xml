@@ -20,7 +20,7 @@
                         <input type="hidden" name="total_fee" t-att-value="total_fee"/>
                     </t>
 
-                    <t t-if=" service in ['create_partner_trade_by_buyer','trade_create_by_buyer' ] ">
+                    <t t-if=" service in ['create_partner_trade_by_buyer' ] ">
                         <input type="hidden" name="logistics_type" t-att-value="logistics_type"/>
                         <input type="hidden" name="logistics_fee" t-att-value="logistics_fee"/>
                         <input type="hidden" name="logistics_payment" t-att-value="logistics_payment"/>
