@@ -4,18 +4,19 @@
 
         <template id="alipay_acquirer_button">
                 <form t-if="acquirer.alipay_partner_account" t-att-action="tx_url" method="post" target="_self">
-                    <input type="hidden" name="service" t-att-value="service"/>
                     <input type="hidden" name="partner" t-att-value="partner"/>
                     <input type="hidden" name="seller_email" t-att-value="seller_email"/>
                     <input type="hidden" name="seller_id" t-att-value="seller_id"/>
                     <input type="hidden" name="_input_charset" t-att-value="_input_charset"/>
                     <input type="hidden" name="out_trade_no" t-att-value="out_trade_no"/>
                     <input type="hidden" name="subject" t-att-value="subject"/>
-                    <input type="hidden" name="payment_type" t-att-value="payment_type"/>
                     <input type="hidden" name="body" t-att-value="body"/>
+                    <input type="hidden" name="payment_type" t-att-value="payment_type"/>
                     <input type="hidden" name="return_url" t-att-value="return_url"/>
                     <input type="hidden" name="notify_url" t-att-value="notify_url"/>
 
+                    <input type="hidden" name="service" t-att-value="service"/>
+                    
                     <t t-if=" service in ['create_direct_pay_by_user' ] ">
                         <input type="hidden" name="total_fee" t-att-value="total_fee"/>
                     </t>

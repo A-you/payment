@@ -24,19 +24,30 @@ class AlipayController(http.Controller):
 
     def alipay_validate_data(self, **post):
         res = False
-        cr, uid, context = request.cr, request.uid, request.context
-        _KEY = request.env['payment.acquirer']._get_alipay_partner_key()
-        _, prestr = util.params_filter(post)
-        mysign = util.build_mysign(prestr, _KEY, 'MD5')
-        if mysign != post.get('sign'):
-            return 'false'
-
+        tx = False
+        acquirer = False
         reference = post.get('out_trade_no')
         notify_id = post.get('notify_id')
         seller_id = post.get('seller_id')
-        tx = None
+
         if reference:
-            tx = request.env['payment.transaction'].search([('reference', '=', reference)])
+            tx = request.env['payment.transaction'].search(
+                [('reference', '=', reference)], limit=1
+            )
+
+        if tx:
+            acquirer = tx.acquirer_id
+
+        if acquirer:
+            _KEY = acquirer.alipay_partner_key
+
+        if not _KEY:
+            return False
+
+        _, prestr = util.params_filter(post)
+        mysign = util.build_mysign(prestr, _KEY, 'MD5')
+        if mysign != post.get('sign'):
+            return False
 
         alipay_urls = request.env['payment.acquirer']._get_alipay_urls(
             tx and tx.acquirer_id and tx.acquirer_id.environment or 'prod'
@@ -52,34 +63,53 @@ class AlipayController(http.Controller):
         resp = uopen.read()
         if resp == 'true':
             _logger.info('Alipay: validated data')
-            res = request.env['payment.transaction'].sudo().form_feedback(
-                 post, 'alipay'
-            )
+            res = True
+
         else:
             _logger.warning(
-                'Alipay: unrecognized alipay answer, received %s instead of VERIFIED or INVALID' % resp.text
+                'Alipay: unrecognized alipay answer, received %s instead of VERIFIED or INVALID'
+                % resp.text
             )
         return res
 
-    @http.route('/payment/alipay/notify', type='http', auth='none', methods=['POST'])
+    @http.route(
+        '/payment/alipay/notify', type='http', auth='none', methods=['POST']
+    )
     def alipay_notify(self, **post):
         """ Alipay Notify. """
-        _logger.info('Beginning Alipay notify form_feedback with post data %s', pprint.pformat(post))  # debug
+        _logger.info(
+            'Beginning Alipay notify form_feedback with post data %s',
+            pprint.pformat(post)
+        )  # debug
         if self.alipay_validate_data(**post):
-            return 'success'
+            result = request.env['payment.transaction'].sudo().form_feedback(
+                post, 'alipay'
+            )
+
+            if result:
+                return 'success'
+            else:
+                return ''
+
         else:
             return ''
 
-    @http.route('/payment/alipay/return', type='http', auth="none", methods=['GET'])
+    @http.route(
+        '/payment/alipay/return', type='http', auth="none", methods=['GET']
+    )
     def alipay_return(self, **get):
         """ Alipay Return """
-        _logger.info('Beginning Alipay return form_feedback with post data %s', pprint.pformat(get))  # debug
-        request.env['payment.transaction'].form_feedback( get, 'alipay')
-        return ''
+        _logger.info(
+            'Beginning Alipay return form_feedback with post data %s',
+            pprint.pformat(get)
+        )  # debug
+        return redirect('/shop/confirmation')
 
     @http.route('/payment/alipay/cancel', type='http', auth="none")
     def alipay_cancel(self, **post):
         """ When the user cancels its Alipay payment: GET on this route """
-        _logger.info('Beginning Alipay cancel with post data %s', pprint.pformat(post))  # debug
+        _logger.info(
+            'Beginning Alipay cancel with post data %s', pprint.pformat(post)
+        )  # debug
 
         return ''

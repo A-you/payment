@@ -11,7 +11,6 @@ import urlparse
 import werkzeug.urls
 import urllib2
 
-import util
 from urllib import urlencode, urlopen
 
 from odoo.addons.payment.models.payment_acquirer import ValidationError
@@ -20,16 +19,32 @@ from odoo import models, fields, api, _
 from odoo.tools.float_utils import float_compare
 from odoo import SUPERUSER_ID, api
 
-import sys
-
-reload(sys)
-sys.setdefaultencoding('utf8')
+import util
 
 _logger = logging.getLogger(__name__)
 
 
 class AcquirerAlipay(models.Model):
     _inherit = 'payment.acquirer'
+
+    ALIPAY_INTERFACE_TYPE = [
+        ('create_direct_pay_by_user', 'Instant Payment Transaction'),
+        ('create_partner_trade_by_buyer', 'Securied Transaction'),
+    ]
+
+    provider = fields.Selection(selection_add=[('alipay', 'Alipay')])
+    alipay_partner_account = fields.Char(
+        'Alipay Partner ID', required_if_provider='alipay'
+    )
+    alipay_partner_key = fields.Char(
+        'Alipay Partner Key', required_if_provider='alipay'
+    )
+    alipay_seller_email = fields.Char(
+        u'支付宝登录账号', required_if_provider='alipay'
+    )
+    alipay_interface_type = fields.Selection(
+        ALIPAY_INTERFACE_TYPE, 'Interface Type', required_if_provider='alipay'
+    )
 
     @api.model
     def _get_alipay_urls(self, environment):
@@ -39,23 +54,12 @@ class AcquirerAlipay(models.Model):
         else:
             return {'alipay_url': 'https://openapi.alipaydev.com/gateway.do?'}
 
-    @api.one
+    @api.model
     def _get_alipay_partner_key(self):
-        return self.alipay_partner_key
-
-    ALIPAY_INTERFACE_TYPE = [
-        # ('trade_create_by_buyer', 'Standard Dual Interface'),
-        ('create_direct_pay_by_user', 'Instant Payment Transaction'),
-        ('create_partner_trade_by_buyer', 'Securied Transaction'),
-    ]
-
-    provider = fields.Selection(selection_add=[('alipay', 'Alipay')])
-    alipay_partner_account = fields.Char('Alipay Partner ID', required_if_provider='alipay')
-    alipay_partner_key = fields.Char('Alipay Partner Key', required_if_provider='alipay')
-    alipay_seller_email = fields.Char(u'支付宝登录账号', required_if_provider='alipay')
-    alipay_interface_type = fields.Selection(ALIPAY_INTERFACE_TYPE, 'Interface Type', required_if_provider='alipay')
-
-    
+        acquirer = request.env['payment.acquirer'].search(
+            [('provider', '=', 'alipay')], limit=1
+        )
+        return acquirer.alipay_partner_key
 
     @api.multi
     def alipay_compute_fees(self, amount, currency_id, country_id):
@@ -81,37 +85,62 @@ class AcquirerAlipay(models.Model):
 
     @api.multi
     def alipay_form_generate_values(self, tx_values):
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        base_url = self.env['ir.config_parameter'
+                            ].sudo().get_param('web.base.url')
 
         alipay_tx_values = dict(tx_values)
         alipay_tx_values.update(
             {
-                'partner': self.alipay_partner_account,
-                'seller_email': self.alipay_seller_email,
-                'seller_id': self.alipay_partner_account,
-                '_input_charset': 'UTF-8',
-                'out_trade_no': tx_values['reference'],
-                'subject': tx_values['reference'],
-                'body': u'%s: %s' % (self.company_id.name, tx_values['reference']),
-                'payment_type': '1',
-                'return_url': '%s' % urlparse.urljoin(base_url, AlipayController._return_url),
-                'notify_url': '%s' % urlparse.urljoin(base_url, AlipayController._notify_url),
+                'partner':
+                    self.alipay_partner_account,
+                'seller_email':
+                    self.alipay_seller_email,
+                'seller_id':
+                    self.alipay_partner_account,
+                '_input_charset':
+                    'UTF-8',
+                'out_trade_no':
+                    tx_values['reference'],
+                'subject':
+                    tx_values['reference'],
+                'body':
+                    u'%s: %s' % (self.company_id.name, tx_values['reference']),
+                'payment_type':
+                    '1',
+                'return_url':
+                    '%s' %
+                    urlparse.urljoin(base_url, AlipayController._return_url),
+                'notify_url':
+                    '%s' %
+                    urlparse.urljoin(base_url, AlipayController._notify_url),
             }
         )
 
         to_sign = {}
         to_sign.update(
             {
-                'partner': self.alipay_partner_account,
-                'seller_email': self.alipay_seller_email,
-                'seller_id': self.alipay_partner_account,
-                '_input_charset': 'UTF-8',
-                'out_trade_no': tx_values['reference'],
-                'subject': tx_values['reference'],
-                'body': u'%s: %s' % (self.company_id.name, tx_values['reference']),
-                'payment_type': '1',
-                'return_url': '%s' % urlparse.urljoin(base_url, AlipayController._return_url),
-                'notify_url': '%s' % urlparse.urljoin(base_url, AlipayController._notify_url),
+                'partner':
+                    self.alipay_partner_account,
+                'seller_email':
+                    self.alipay_seller_email,
+                'seller_id':
+                    self.alipay_partner_account,
+                '_input_charset':
+                    'UTF-8',
+                'out_trade_no':
+                    tx_values['reference'],
+                'subject':
+                    tx_values['reference'],
+                'body':
+                    u'%s: %s' % (self.company_id.name, tx_values['reference']),
+                'payment_type':
+                    '1',
+                'return_url':
+                    '%s' %
+                    urlparse.urljoin(base_url, AlipayController._return_url),
+                'notify_url':
+                    '%s' %
+                    urlparse.urljoin(base_url, AlipayController._notify_url),
             }
         )
 
@@ -129,37 +158,27 @@ class AcquirerAlipay(models.Model):
             'quantity': 1,
         }
 
-        payload_dualfun = {
-            'service': 'trade_create_by_buyer',
-            'logistics_type': 'EXPRESS',
-            'logistics_fee': 0,
-            'logistics_payment': 'SELLER_PAY',
-            'price': tx_values['amount'],
-            'quantity': 1,
-        }
-
         if self.alipay_interface_type == 'create_direct_pay_by_user':
             to_sign.update(payload_direct)
             alipay_tx_values.update(payload_direct)
 
         if self.alipay_interface_type == 'create_partner_trade_by_buyer':
             to_sign.update(payload_escow)
-            alipay_tx_values.update(payload_direct)
-
-        if self.alipay_interface_type == 'trade_create_by_buyer':
-            to_sign.update(payload_dualfun)
-            alipay_tx_values.update(payload_direct)
+            alipay_tx_values.update(payload_escow)
 
         _, prestr = util.params_filter(to_sign)
-        alipay_tx_values['sign'] = util.build_mysign(prestr, self.alipay_partner_key, 'MD5')
+        alipay_tx_values['sign'] = util.build_mysign(
+            prestr, self.alipay_partner_key, 'MD5'
+        )
         alipay_tx_values['sign_type'] = 'MD5'
 
-        _logger.info( '----alipay tx_values is %s'%alipay_tx_values)
+        _logger.info('----alipay tx_values is %s' % alipay_tx_values)
 
         return alipay_tx_values
 
     @api.multi
     def alipay_get_form_action_url(self):
+        self.ensure_one()
         return self._get_alipay_urls(self.environment)['alipay_url']
 
 
@@ -177,21 +196,24 @@ class TxAlipay(models.Model):
     def _alipay_form_get_tx_from_data(self, data):
         reference, txn_id = data.get('out_trade_no'), data.get('trade_no')
         if not reference or not txn_id:
-            error_msg = 'Alipay: received data with missing reference (%s) or txn_id (%s)' % (reference, txn_id)
+            error_msg = 'Alipay: received data with missing reference (%s) or txn_id (%s)' % (
+                reference, txn_id
+            )
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
-        # find tx -> @TDENOTE use txn_id ?
-        tx_ids = self.env['payment.transaction'].search([('reference', '=', reference)])
-        if not tx_ids or len(tx_ids) > 1:
+        tx = self.env['payment.transaction'].search(
+            [('reference', '=', reference)]
+        )
+        if not tx or len(tx) > 1:
             error_msg = 'Alipay: received data for reference %s' % (reference)
-            if not tx_ids:
+            if not tx:
                 error_msg += '; no order found'
             else:
                 error_msg += '; multiple order found'
             _logger.error(error_msg)
             raise ValidationError(error_msg)
-        return tx_ids[0]
+        return tx
 
     @api.multi
     def _alipay_form_validate(self, data):
@@ -205,8 +227,16 @@ class TxAlipay(models.Model):
         acquirer = self.acquirer_id
         if acquirer.alipay_interface_type == 'create_direct_pay_by_user':
             if status in ['TRADE_FINISHED', 'TRADE_SUCCESS']:
-                _logger.info('Validated Alipay payment for self %s: set as done' % (self.reference))
-                data.update(state='done', date_validate=data.get('notify_time', fields.datetime.now()))
+                _logger.info(
+                    'Validated Alipay payment for self %s: set as done' %
+                    (self.reference)
+                )
+                data.update(
+                    state='done',
+                    date_validate=data.get(
+                        'notify_time', fields.datetime.now()
+                    )
+                )
                 return self.write(data)
             else:
                 error = 'Received unrecognized status for Alipay payment %s: %s, set as error' % (
@@ -216,14 +246,30 @@ class TxAlipay(models.Model):
                 data.update(state='error', state_message=error)
                 return self.write(data)
 
-        if acquirer.alipay_interface_type in ['create_partner_trade_by_buyer', 'trade_create_by_buyer']:
+        if acquirer.alipay_interface_type in [
+            'create_partner_trade_by_buyer', 'trade_create_by_buyer'
+        ]:
             if status in ['WAIT_SELLER_SEND_GOODS']:
-                _logger.info('Validated Alipay payment for self %s: set as done' % (self.reference))
-                data.update(state='done', date_validate=data.get('gmt_payment', fields.datetime.now()))
+                _logger.info(
+                    'Validated Alipay payment for self %s: set as done' %
+                    (self.reference)
+                )
+                data.update(
+                    state='done',
+                    date_validate=data.get(
+                        'gmt_payment', fields.datetime.now()
+                    )
+                )
                 return self.write(data)
             elif status in ['WAIT_BUYER_PAY']:
-                _logger.info('Received notification for Alipay payment %s: set as pending' % (self.reference))
-                data.update(state='pending', state_message=data.get('pending_reason', ''))
+                _logger.info(
+                    'Received notification for Alipay payment %s: set as pending'
+                    % (self.reference)
+                )
+                data.update(
+                    state='pending',
+                    state_message=data.get('pending_reason', '')
+                )
                 return self.write(data)
             else:
                 error = 'Received unrecognized status for Alipay payment %s: %s, set as error' % (
