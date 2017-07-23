@@ -104,7 +104,7 @@ class AcquirerAlipay(models.Model):
                 'subject':
                     tx_values['reference'],
                 'body':
-                    u'%s: %s' % (self.company_id.name, tx_values['reference']),
+                    tx_values['reference'],
                 'payment_type':
                     '1',
                 'return_url':
@@ -132,7 +132,7 @@ class AcquirerAlipay(models.Model):
                 'subject':
                     tx_values['reference'],
                 'body':
-                    u'%s: %s' % (self.company_id.name, tx_values['reference']),
+                    tx_values['reference'],
                 'payment_type':
                     '1',
                 'return_url':
