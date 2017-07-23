@@ -13,6 +13,7 @@ from odoo import SUPERUSER_ID
 from odoo import http
 from odoo.addons.payment_alipay.models import util
 from odoo.http import request
+from werkzeug.utils import redirect
 
 _logger = logging.getLogger(__name__)
 
@@ -103,7 +104,16 @@ class AlipayController(http.Controller):
             'Beginning Alipay return form_feedback with post data %s',
             pprint.pformat(get)
         )  # debug
-        return redirect('/shop/confirmation')
+        if self.alipay_validate_data(**get):
+            reference = get.get('out_trade_no')
+            if reference:
+                tx = request.env['payment.transaction'].search(
+                    [('reference', '=', reference)], limit=1
+                )
+                if get.get('is_success') == 'T':
+                    tx.write({'state': 'pending'})
+
+            return redirect('/shop/confirmation')
 
     @http.route('/payment/alipay/cancel', type='http', auth="none")
     def alipay_cancel(self, **post):

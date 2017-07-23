@@ -89,7 +89,7 @@ class WeixinController(http.Controller):
                 [('reference', '=', post['out_trade_no'])]
             )
 
-            tx_id.sudo().write({'weixin_txn_code_url': code_url})
+            tx_id.sudo().write({'weixin_txn_code_url': code_url, 'state': 'pending'})
 
             return redirect('/shop/confirmation')
 
