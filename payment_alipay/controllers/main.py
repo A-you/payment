@@ -111,7 +111,7 @@ class AlipayController(http.Controller):
                     [('reference', '=', reference)], limit=1
                 )
                 if get.get('is_success') == 'T':
-                    tx.write({'state': 'pending'})
+                    tx.sudo().write({'state': 'pending'})
 
             return redirect('/shop/confirmation')
 
