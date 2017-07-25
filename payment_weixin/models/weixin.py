@@ -15,8 +15,10 @@ from odoo import api
 from odoo import fields
 from odoo import models
 
+# from odoo.addons.payment.models.payment_acquirer import ValidationError
 from odoo.addons.payment_weixin.controllers.main import WeixinController
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
+from odoo.exceptions import ValidationError
 from odoo.http import request
 
 import util
@@ -26,6 +28,7 @@ _logger = logging.getLogger(__name__)
 
 class AcquirerWeixin(models.Model):
     _inherit = 'payment.acquirer'
+
 
     provider = fields.Selection(selection_add=[('weixin', 'Weixin')])
 
@@ -59,11 +62,11 @@ class AcquirerWeixin(models.Model):
 
     @api.model
     def _get_weixin_key(self):
-        return self.search([('provider', '=', 'weixin')], limit=1).weixin_key
+        return self.search([('provider','=', 'weixin')], limit=1).weixin_key
 
     @api.model
     def _get_ipaddress(self):
-        return self.search([('provider', '=', 'weixin')], limit=1).ip_address
+        return self.search([('provider','=', 'weixin')], limit=1).ip_address
 
     def json2xml(self, json):
         string = ""
@@ -255,7 +258,7 @@ class AcquirerWeixin(models.Model):
 
             msg = "[%s] %s " % (return_code, return_msg)
 
-            _logger.info('+++ some error occurred %s' % msg)
+            _logger.info('+++ some error occurred %s'%msg)
             # raise UserError(msg)
 
         return False
@@ -273,26 +276,25 @@ class TxWeixin(models.Model):
     # --------------------------------------------------
     @api.model
     def _weixin_form_get_tx_from_data(self, data):
-        reference, txn_id = data.get('out_trade_no'
-                                     ), data.get('transaction_id')
+        reference, txn_id = data.get('out_trade_no'), data.get('transaction_id')
         if not reference or not txn_id:
             error_msg = 'weixin: received data with missing reference (%s) or txn_id (%s)' % (
                 reference, txn_id
             )
             _logger.error(error_msg)
-            raise ValidationError(error_msg)
+            raise UserError(error_msg)
 
-        tx = self.search([('reference', '=', reference)])
-        if not tx or len(tx) > 1:
+        # find tx -> @TDENOTE use txn_id ?
+        tx_ids = self.search([('reference', '=', reference)])
+        if not tx_ids or len(tx_ids) > 1:
             error_msg = 'weixin: received data for reference %s' % (reference)
-            if not tx:
+            if not tx_ids:
                 error_msg += '; no order found'
             else:
                 error_msg += '; multiple order found'
             _logger.error(error_msg)
-            raise ValidationError(error_msg)
-
-        return tx
+            raise UserError(error_msg)
+        return tx_ids[0]
 
     @api.multi
     def _weixin_form_validate(self, data):

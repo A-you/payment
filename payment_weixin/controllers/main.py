@@ -35,16 +35,19 @@ class WeixinController(http.Controller):
 
         _KEY = acquirer.weixin_key
         _logger.info('weixin key: %s' % _KEY)
-        if not _KEY:
+        if _KEY:
+            _, prestr = util.params_filter(json)
+            mysign = util.build_mysign(prestr, _KEY, 'MD5')
+            if mysign != json.get('sign'):
+                return False
+
+            _logger.info('weixin: data validated!')
+
+            return True
+
+        else:
             return False
 
-        _, prestr = util.params_filter(json)
-        mysign = util.build_mysign(prestr, _KEY, 'MD5')
-        if mysign != json.get('sign'):
-            return False
-
-        _logger.info('weixin: data validated!')
-        return True
 
     @http.route(
         '/payment/weixin/notify',
@@ -61,16 +64,15 @@ class WeixinController(http.Controller):
             pprint.pformat(xml)
         )  # debug
         if len(xml) == 0:
-            return '<xml><return_code><![CDATA[FAIL]]></return_code></xml>'
+            return ''
 
         if self.weixin_validate_data(xml):
             return request.env['payment.transaction'].sudo().form_feedback(
                 json,
                 'weixin',
             )
-
         else:
-            return '<xml><return_code><![CDATA[FAIL]]></return_code></xml>'
+            return ''
 
     @http.route(
         '/payment/weixin/code_url', type='http', auth='none', csrf=False
@@ -89,7 +91,7 @@ class WeixinController(http.Controller):
                 [('reference', '=', post['out_trade_no'])]
             )
 
-            tx_id.sudo().write({'weixin_txn_code_url': code_url, 'state': 'pending'})
+            tx_id.sudo().write({'weixin_txn_code_url': code_url,'state': 'pending'})
 
             return redirect('/shop/confirmation')
 
