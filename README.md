@@ -1,3 +1,5 @@
+[![HitCount](http://hits.dwyl.io/odoo-cn/payment.svg)](http://hits.dwyl.io/jeffery9/odoo-cn/payment)
+
 # online payment for odoo  
 
 todo lists
